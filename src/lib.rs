@@ -2,6 +2,8 @@ use chrono::prelude::*;
 use chrono::Duration;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation, errors::Error};
 use serde::{Deserialize, Serialize};
+use rand::prelude::*;
+use rand::{Rng, rngs::StdRng};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -43,6 +45,24 @@ pub fn decode_jwt(secret: &str, token: &str) -> Result<Claims, Error> {
     token_message.map(|data| data.claims)
 }
 
+pub struct Scheduler {
+    hosts: Vec<String>,
+    rng: StdRng
+}
+
+impl Scheduler {
+    pub fn new(hosts: Vec<String>) -> Self {
+        Scheduler {
+            hosts,
+            rng: StdRng::from_entropy(),
+        }
+    }
+
+    pub fn allocate_host(&mut self) -> Option<&String> {
+        self.hosts.iter().choose(&mut self.rng)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::thread::sleep;
@@ -79,5 +99,26 @@ mod tests {
 
         assert!(decoded.is_err());
         Ok(())
+    }
+
+    #[test]
+    fn test_scheduler_ok() {
+        let hosts = vec![
+            "foo.local".to_string(),
+            "bar.local".to_string(),
+            "baz.local".to_string()
+        ];
+        let mut scheduler = Scheduler::new(hosts.clone());
+
+        assert!(hosts.contains(scheduler.allocate_host().unwrap()));
+    }
+
+    #[test]
+    fn test_scheduler_fail() {
+        let hosts = vec![
+        ];
+        let mut scheduler = Scheduler::new(hosts.clone());
+
+        assert!(scheduler.allocate_host().is_none());
     }
 }
