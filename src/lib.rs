@@ -3,14 +3,14 @@ use chrono::Duration;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation, errors::Error};
 use serde::{Deserialize, Serialize};
 use rand::prelude::*;
-use rand::{Rng, rngs::StdRng};
+use rand::rngs::StdRng;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    version: u16,
-    host: String,
-    iat: i64,
-    exp: i64,
+    pub version: u16,
+    pub host: String,
+    pub iat: i64,
+    pub exp: i64,
 }
 
 pub fn make_jwt(secret: &str, duration: Duration, host: String) -> Result<String, Error> {
@@ -117,7 +117,7 @@ mod tests {
     fn test_scheduler_fail() {
         let hosts = vec![
         ];
-        let mut scheduler = Scheduler::new(hosts.clone());
+        let mut scheduler = Scheduler::new(hosts);
 
         assert!(scheduler.allocate_host().is_none());
     }
