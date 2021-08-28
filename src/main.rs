@@ -3,7 +3,21 @@ use warp::{
     Filter, http::StatusCode,
 };
 use std::sync::{Arc, Mutex};
+use serde::{Deserialize, Serialize};
 use magic_tunnel_auth::{make_jwt, decode_jwt, Scheduler};
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum TokenResponse {
+    TokenResponseOk {
+        version: u16,
+        token: String,
+    },
+    TokenResponseErr {
+        version: u16,
+        message: String,
+    }
+}
 
 fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let scheduler = Arc::new(Mutex::new(Scheduler::new(hosts)));
@@ -18,17 +32,29 @@ fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Extract
 
         match scheduler.allocate_host().map(|host| make_jwt(secret, Duration::minutes(10), host.to_string())) {
             Some(Ok(token)) => {
-                warp::reply::with_status(token, StatusCode::OK)
+                let response = TokenResponse::TokenResponseOk {
+                    version: 0,
+                    token,
+                };
+                warp::reply::with_status(warp::reply::json(&response), StatusCode::OK)
             },
             Some(Err(e)) => {
                 // fail if and only if the combination of header and secret are invalid
                 // this would not happen in production
                 tracing::error!("failed to generate token {:?}", e);
-                warp::reply::with_status("failed to generate token".into(), StatusCode::INTERNAL_SERVER_ERROR)
+                let response = TokenResponse::TokenResponseErr {
+                    version: 0,
+                    message: "failed to generate token".into()
+                };
+                warp::reply::with_status(warp::reply::json(&response), StatusCode::INTERNAL_SERVER_ERROR)
             },
             None => {
                 tracing::error!("failed to allocate host");
-                warp::reply::with_status("failed to allocate host".into(), StatusCode::SERVICE_UNAVAILABLE)
+                let response = TokenResponse::TokenResponseErr {
+                    version: 0,
+                    message: "failed to allocate host".into()
+                };
+                warp::reply::with_status(warp::reply::json(&response), StatusCode::SERVICE_UNAVAILABLE)
             }
         }
     });
@@ -98,11 +124,15 @@ mod tests_routes {
         let resp = req.reply(&build_routes(secret, hosts.clone())).await;
         assert_eq!(resp.status(), StatusCode::OK);
         
-        let body = str::from_utf8(resp.body())?;
-
-        let claim = decode_jwt("test", body)?;
-        assert_eq!(claim.version, 0);
-        assert!(hosts.contains(&claim.host));
+        let response: TokenResponse = serde_json::from_slice(resp.body())?;
+        if let TokenResponse::TokenResponseOk {version, token} = response {
+            assert_eq!(version, 0);
+            let claim = decode_jwt("test", &token)?;
+            assert_eq!(claim.version, 0);
+            assert!(hosts.contains(&claim.host));
+        } else {
+            panic!("token response must be ok");
+        }
         Ok(())
     }
 
@@ -116,8 +146,17 @@ mod tests_routes {
         let resp = req.reply(&build_routes(secret, hosts.clone())).await;
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
         
-        let body = str::from_utf8(resp.body())?;
-        assert_eq!(body, "failed to allocate host".to_string());
+        // let body = str::from_utf8(resp.body())?;
+        // assert_eq!(body, "failed to allocate host".to_string());
+
+
+        let response: TokenResponse = serde_json::from_slice(resp.body())?;
+        if let TokenResponse::TokenResponseErr {version, message } = response {
+            assert_eq!(version, 0);
+            assert_eq!(message, "failed to allocate host".to_string());
+        } else {
+            panic!("token response must be err");
+        }
         Ok(())
     }
 }
