@@ -37,6 +37,9 @@ pub async fn post_request_token(url: &str) -> Result<String, Error> {
 mod tests_client {
     use super::*;
     use crate::{build_routes, decode_jwt, JWT_CLAIMS_VERSION};
+    use warp::{
+        Filter, http::StatusCode,
+    };
 
     #[tokio::test]
     async fn client_parse_ok_response() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,10 +51,10 @@ mod tests_client {
         ];
         let routes = build_routes(secret, hosts.clone());
         tokio::spawn(async move {
-            warp::serve(routes).run(([127, 0, 0, 1], 9876)).await;
+            warp::serve(routes).run(([127, 0, 0, 1], 11111)).await;
         });
 
-        let token = post_request_token("http://localhost:9876/request_token").await?;
+        let token = post_request_token("http://localhost:11111/request_token").await?;
         let claim = decode_jwt(secret, &token)?;
         assert_eq!(claim.version, JWT_CLAIMS_VERSION);
         assert!(hosts.contains(&claim.host));
@@ -59,7 +62,7 @@ mod tests_client {
     }
 
     #[tokio::test]
-    async fn client_returns_error_when_token_server_error() -> Result<(), Box<dyn std::error::Error>> {
+    async fn client_returns_error_when_token_server_connection_error() -> Result<(), Box<dyn std::error::Error>> {
         let secret = "test";
         let hosts = vec![
             "foo.local".to_string(),
@@ -68,14 +71,68 @@ mod tests_client {
         ];
         let routes = build_routes(secret, hosts.clone());
         tokio::spawn(async move {
-            warp::serve(routes).run(([127, 0, 0, 1], 9876)).await;
+            warp::serve(routes).run(([127, 0, 0, 1], 11112)).await;
         });
 
-        let result = post_request_token("http://localhost:9876/this_is_invalid_path").await;
+        let result = post_request_token("http://localhost:11112/this_is_invalid_path").await;
         assert!(result.is_err());
 
         let error = result.err().unwrap();
         assert!(matches!(error, Error::ConnectionError(_)));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn client_returns_error_when_token_server_version_mismatch() -> Result<(), Box<dyn std::error::Error>> {
+        let routes = warp::post().and(warp::path("request_token")).map(|| {
+            let response = TokenResponse::TokenResponseOk {
+                version: TOKEN_SERVER_API_VERSION + 100,
+                token: "foobartoken".to_string(),
+            };
+            warp::reply::with_status(warp::reply::json(&response), StatusCode::OK)
+        });
+        tokio::spawn(async move {
+            warp::serve(routes).run(([127, 0, 0, 1], 11113)).await;
+        });
+
+        let result = post_request_token("http://localhost:11113/request_token").await;
+        assert!(result.is_err());
+
+        let error = result.err().unwrap();
+        assert!(matches!(error, Error::VersionMismatch(_)));
+
+        if let Error::VersionMismatch(version) = error {
+            assert_eq!(version, TOKEN_SERVER_API_VERSION + 100);
+        } else {
+            panic!("unexpected error variant");
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn client_returns_error_when_token_server_internal_error() -> Result<(), Box<dyn std::error::Error>> {
+        let routes = warp::post().and(warp::path("request_token")).map(|| {
+            let response = TokenResponse::TokenResponseErr {
+                    version: 0,
+                    message: "failed to generate token".into()
+                };
+                warp::reply::with_status(warp::reply::json(&response), StatusCode::INTERNAL_SERVER_ERROR)
+        });
+        tokio::spawn(async move {
+            warp::serve(routes).run(([127, 0, 0, 1], 11114)).await;
+        });
+
+        let result = post_request_token("http://localhost:11114/request_token").await;
+        assert!(result.is_err());
+
+        let error = result.err().unwrap();
+        assert!(matches!(error, Error::TokenServerError(_)));
+
+        if let Error::TokenServerError(message) = error {
+            assert_eq!(message, "failed to generate token".to_string());
+        } else {
+            panic!("unexpected error variant");
+        }
         Ok(())
     }
 }
