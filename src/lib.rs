@@ -5,6 +5,14 @@ use serde::{Deserialize, Serialize};
 use rand::prelude::*;
 use rand::rngs::StdRng;
 
+mod client;
+mod server;
+pub use server::build_routes;
+
+pub(crate) const TOKEN_SERVER_API_VERSION: u16 = 0;
+pub(crate) const JWT_CLAIMS_VERSION: u16 = 0;
+
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub version: u16,
@@ -23,7 +31,7 @@ pub fn make_jwt(secret: &str, duration: Duration, host: String) -> Result<String
     let iat = now.timestamp();
     let exp = (now + duration).timestamp();
     let my_claims = Claims {
-        version: 0,
+        version: JWT_CLAIMS_VERSION,
         host,
         iat,
         exp,
@@ -63,6 +71,19 @@ impl Scheduler {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum TokenResponse {
+    TokenResponseOk {
+        version: u16,
+        token: String,
+    },
+    TokenResponseErr {
+        version: u16,
+        message: String,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::thread::sleep;
@@ -75,7 +96,7 @@ mod tests {
         let token = make_jwt(secret, Duration::minutes(10), "foo-host".to_string())?;
         let decoded = decode_jwt(secret, &token)?;
 
-        assert_eq!(decoded.version, 0);
+        assert_eq!(decoded.version, JWT_CLAIMS_VERSION);
         assert_eq!(decoded.host, "foo-host".to_string());
         Ok(())
     }

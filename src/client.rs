@@ -1,0 +1,81 @@
+use thiserror::Error;
+use crate::{TokenResponse, TOKEN_SERVER_API_VERSION};
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("Failed to connect to token server or failed to parse message from token server: {0}.")]
+    ConnectionError(#[from] reqwest::Error),
+    #[error("Client does not support token server version: {0}.")]
+    VersionMismatch(u16),
+    #[error("Token server error: {0}.")]
+    TokenServerError(String),
+}
+
+pub async fn post_request_token(url: &str) -> Result<String, Error> {
+    let client = reqwest::Client::new();
+    let resp = client.post(url)
+        .send()
+        .await?
+        .json::<TokenResponse>()
+        .await?;
+
+
+    match resp {
+        TokenResponse::TokenResponseOk {version, token} if version == TOKEN_SERVER_API_VERSION => {
+            Ok(token)
+        },
+        TokenResponse::TokenResponseOk {version, token} => {
+            Err(Error::VersionMismatch(version))
+        },
+        TokenResponse::TokenResponseErr { version, message } => {
+            Err(Error::TokenServerError(message))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests_client {
+    use super::*;
+    use crate::{build_routes, decode_jwt, JWT_CLAIMS_VERSION};
+
+    #[tokio::test]
+    async fn client_parse_ok_response() -> Result<(), Box<dyn std::error::Error>> {
+        let secret = "test";
+        let hosts = vec![
+            "foo.local".to_string(),
+            "bar.local".to_string(),
+            "baz.local".to_string()
+        ];
+        let routes = build_routes(secret, hosts.clone());
+        tokio::spawn(async move {
+            warp::serve(routes).run(([127, 0, 0, 1], 9876)).await;
+        });
+
+        let token = post_request_token("http://localhost:9876/request_token").await?;
+        let claim = decode_jwt(secret, &token)?;
+        assert_eq!(claim.version, JWT_CLAIMS_VERSION);
+        assert!(hosts.contains(&claim.host));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn client_returns_error_when_token_server_error() -> Result<(), Box<dyn std::error::Error>> {
+        let secret = "test";
+        let hosts = vec![
+            "foo.local".to_string(),
+            "bar.local".to_string(),
+            "baz.local".to_string()
+        ];
+        let routes = build_routes(secret, hosts.clone());
+        tokio::spawn(async move {
+            warp::serve(routes).run(([127, 0, 0, 1], 9876)).await;
+        });
+
+        let result = post_request_token("http://localhost:9876/this_is_invalid_path").await;
+        assert!(result.is_err());
+
+        let error = result.err().unwrap();
+        assert!(matches!(error, Error::ConnectionError(_)));
+        Ok(())
+    }
+}
