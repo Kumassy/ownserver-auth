@@ -8,6 +8,7 @@ use rand::rngs::StdRng;
 mod client;
 mod server;
 pub use server::build_routes;
+pub use client::post_request_token;
 
 pub(crate) const TOKEN_SERVER_API_VERSION: u16 = 0;
 pub(crate) const JWT_CLAIMS_VERSION: u16 = 0;
