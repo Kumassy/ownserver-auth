@@ -11,12 +11,9 @@ pub use server::build_routes;
 pub use client::post_request_token;
 
 pub(crate) const TOKEN_SERVER_API_VERSION: u16 = 0;
-pub(crate) const JWT_CLAIMS_VERSION: u16 = 0;
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub version: u16,
     pub host: String,
     pub iat: i64,
     pub exp: i64,
@@ -32,7 +29,6 @@ pub fn make_jwt(secret: &str, duration: Duration, host: String) -> Result<String
     let iat = now.timestamp();
     let exp = (now + duration).timestamp();
     let my_claims = Claims {
-        version: JWT_CLAIMS_VERSION,
         host,
         iat,
         exp,
@@ -97,7 +93,6 @@ mod tests {
         let token = make_jwt(secret, Duration::minutes(10), "foo-host".to_string())?;
         let decoded = decode_jwt(secret, &token)?;
 
-        assert_eq!(decoded.version, JWT_CLAIMS_VERSION);
         assert_eq!(decoded.host, "foo-host".to_string());
         Ok(())
     }

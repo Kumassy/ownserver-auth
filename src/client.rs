@@ -36,7 +36,7 @@ pub async fn post_request_token(url: &str) -> Result<String, Error> {
 #[cfg(test)]
 mod tests_client {
     use super::*;
-    use crate::{build_routes, decode_jwt, JWT_CLAIMS_VERSION};
+    use crate::{build_routes, decode_jwt};
     use warp::{
         Filter, http::StatusCode,
     };
@@ -56,7 +56,6 @@ mod tests_client {
 
         let token = post_request_token("http://localhost:11111/request_token").await?;
         let claim = decode_jwt(secret, &token)?;
-        assert_eq!(claim.version, JWT_CLAIMS_VERSION);
         assert!(hosts.contains(&claim.host));
         Ok(())
     }

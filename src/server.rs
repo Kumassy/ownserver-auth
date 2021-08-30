@@ -90,7 +90,6 @@ mod tests_routes {
         if let TokenResponse::TokenResponseOk {version, token} = response {
             assert_eq!(version, 0);
             let claim = decode_jwt("test", &token)?;
-            assert_eq!(claim.version, 0);
             assert!(hosts.contains(&claim.host));
         } else {
             panic!("token response must be ok");
