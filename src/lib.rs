@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 use chrono::Duration;
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation, errors::Error};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation, errors::Error as JWTError};
 use serde::{Deserialize, Serialize};
 use rand::prelude::*;
 use rand::rngs::StdRng;
@@ -8,7 +8,7 @@ use rand::rngs::StdRng;
 mod client;
 mod server;
 pub use server::build_routes;
-pub use client::post_request_token;
+pub use client::{post_request_token, Error};
 
 pub(crate) const TOKEN_SERVER_API_VERSION: u16 = 0;
 
@@ -19,7 +19,7 @@ pub struct Claims {
     pub exp: i64,
 }
 
-pub fn make_jwt(secret: &str, duration: Duration, host: String) -> Result<String, Error> {
+pub fn make_jwt(secret: &str, duration: Duration, host: String) -> Result<String, JWTError> {
     let header = Header {
         typ: Some("JWT".to_string()),
         alg: Algorithm::HS256,
@@ -41,7 +41,7 @@ pub fn make_jwt(secret: &str, duration: Duration, host: String) -> Result<String
     )
 }
 
-pub fn decode_jwt(secret: &str, token: &str) -> Result<Claims, Error> {
+pub fn decode_jwt(secret: &str, token: &str) -> Result<Claims, JWTError> {
     let token_message = decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_ref()),
