@@ -3,7 +3,7 @@ use chrono::Duration;
 use warp::{
     Filter, http::StatusCode,
 };
-use crate::{make_jwt, Scheduler, TokenResponse};
+use crate::{make_jwt, Scheduler, TokenResponse, TOKEN_SERVER_API_VERSION};
 
 pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let scheduler = Arc::new(Mutex::new(Scheduler::new(hosts)));
@@ -19,7 +19,7 @@ pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Ext
         match scheduler.allocate_host().map(|host| make_jwt(secret, Duration::minutes(10), host.to_string())) {
             Some(Ok(token)) => {
                 let response = TokenResponse::TokenResponseOk {
-                    version: 0,
+                    version: TOKEN_SERVER_API_VERSION,
                     token,
                 };
                 warp::reply::with_status(warp::reply::json(&response), StatusCode::OK)
@@ -29,7 +29,7 @@ pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Ext
                 // this would not happen in production
                 tracing::error!("failed to generate token {:?}", e);
                 let response = TokenResponse::TokenResponseErr {
-                    version: 0,
+                    version: TOKEN_SERVER_API_VERSION,
                     message: "failed to generate token".into()
                 };
                 warp::reply::with_status(warp::reply::json(&response), StatusCode::INTERNAL_SERVER_ERROR)
@@ -37,7 +37,7 @@ pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Ext
             None => {
                 tracing::error!("failed to allocate host");
                 let response = TokenResponse::TokenResponseErr {
-                    version: 0,
+                    version: TOKEN_SERVER_API_VERSION,
                     message: "failed to allocate host".into()
                 };
                 warp::reply::with_status(warp::reply::json(&response), StatusCode::SERVICE_UNAVAILABLE)
