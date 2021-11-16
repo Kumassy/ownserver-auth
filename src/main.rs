@@ -5,7 +5,7 @@ use magic_tunnel_auth::{make_jwt, decode_jwt, build_routes};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let secret = "supersecretsharedpassphrased";
+    let secret = "supersecret";
     let token = make_jwt(
         secret,
         Duration::minutes(10),
@@ -15,12 +15,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("decoded: {:?}", decode_jwt(secret, &token?));
 
     let hosts = vec![
-        "foo.local".to_string(),
-        "bar.local".to_string(),
-        "baz.local".to_string()
+        // "foo.local".to_string(),
+        // "bar.local".to_string(),
+        // "baz.local".to_string()
+        "foohost.local".to_string(),
     ];
 
     let routes = build_routes(secret, hosts);
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    warp::serve(routes).run(([127, 0, 0, 1], 8123)).await;
     Ok(())
 }
