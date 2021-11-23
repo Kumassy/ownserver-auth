@@ -1,0 +1,71 @@
+swagger: "2.0"
+
+info:
+  version: 0.0.1
+  title: Magic Tunnel Auth
+  description: |
+    - implement user auth logic
+    - allocate proxy server based on their load, payload type, user info...
+schemes:
+  - http
+  - https
+host: localhost:8123
+basePath: /
+tags:
+  - name: "Auth"
+    description: Endpoint for user auth
+  - name: "Health Check"
+    description: Endpoint for health check
+paths:
+  /request_token:
+    post:
+      summary:
+        Issue token to access proxy server. It contains proxy server's FQDN, jwt to access to the server.
+      tags:
+        - Auth
+      responses:
+        200:
+          description: OK
+          schema:
+            type: object
+            properties:
+              version:
+                type: integer
+                example: 1
+              token:
+                type: string
+                example: TOKEN_IN_JWT_FORMAT
+        500:
+          description: Internal Server Error. Happens if and only if the combination of header and secret are invalid. This would not happen in production.
+          schema:
+            type: object
+            properties:
+              version:
+                type: integer
+                example: 1
+              message:
+                type: string
+                example: "failed to generate token"
+        503:
+          description: Failed to allocate valid host. No available host / port.
+          schema:
+            type: object
+            properties:
+              version:
+                type: integer
+                example: 1
+              message:
+                type: string
+                example: "failed to allocate host"
+  /health_check:
+    get:
+      summary:
+        Health check for Load Balancer
+      tags:
+        - Health Check
+      responses:
+        200:
+          description: OK
+          schema:
+            type: string
+            example: ok  
