@@ -11,7 +11,7 @@ pub enum Error {
     TokenServerError(String),
 }
 
-pub async fn post_request_token(url: &str) -> Result<String, Error> {
+pub async fn post_request_token(url: &str) -> Result<(String, String), Error> {
     let client = reqwest::Client::new();
     let resp = client.post(url)
         .send()
@@ -21,13 +21,13 @@ pub async fn post_request_token(url: &str) -> Result<String, Error> {
 
 
     match resp {
-        TokenResponse::TokenResponseOk {version, token} if version == TOKEN_SERVER_API_VERSION => {
-            Ok(token)
+        TokenResponse::TokenResponseOk {version, token, host} if version == TOKEN_SERVER_API_VERSION => {
+            Ok((token, host))
         },
-        TokenResponse::TokenResponseOk {version, token} => {
+        TokenResponse::TokenResponseOk {version, ..} => {
             Err(Error::VersionMismatch(version))
         },
-        TokenResponse::TokenResponseErr { version, message } => {
+        TokenResponse::TokenResponseErr { message, .. } => {
             Err(Error::TokenServerError(message))
         }
     }
@@ -54,7 +54,7 @@ mod tests_client {
             warp::serve(routes).run(([127, 0, 0, 1], 11111)).await;
         });
 
-        let token = post_request_token("http://localhost:11111/request_token").await?;
+        let (token, host) = post_request_token("http://localhost:11111/request_token").await?;
         let claim = decode_jwt(secret, &token)?;
         assert!(hosts.contains(&claim.host));
         Ok(())
@@ -87,6 +87,7 @@ mod tests_client {
             let response = TokenResponse::TokenResponseOk {
                 version: TOKEN_SERVER_API_VERSION + 100,
                 token: "foobartoken".to_string(),
+                host: "foohost.local".to_string()
             };
             warp::reply::with_status(warp::reply::json(&response), StatusCode::OK)
         });

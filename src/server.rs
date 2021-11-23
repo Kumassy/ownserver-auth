@@ -16,11 +16,15 @@ pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Ext
         let scheduler = scheduler.clone();
         let mut scheduler = scheduler.lock().unwrap();
 
-        match scheduler.allocate_host().map(|host| make_jwt(secret, Duration::minutes(10), host.to_string())) {
-            Some(Ok(token)) => {
+        match scheduler.allocate_host().map(|host| {
+            make_jwt(secret, Duration::minutes(10), host.to_string())
+                .map(|token| (token, host.to_string()))
+        }) {
+            Some(Ok((token, host))) => {
                 let response = TokenResponse::TokenResponseOk {
                     version: TOKEN_SERVER_API_VERSION,
                     token,
+                    host,
                 };
                 warp::reply::with_status(warp::reply::json(&response), StatusCode::OK)
             },
@@ -87,10 +91,11 @@ mod tests_routes {
         assert_eq!(resp.status(), StatusCode::OK);
         
         let response: TokenResponse = serde_json::from_slice(resp.body())?;
-        if let TokenResponse::TokenResponseOk {version, token} = response {
+        if let TokenResponse::TokenResponseOk {version, token, host} = response {
             assert_eq!(version, 0);
             let claim = decode_jwt("test", &token)?;
             assert!(hosts.contains(&claim.host));
+            assert_eq!(claim.host, host);
         } else {
             panic!("token response must be ok");
         }

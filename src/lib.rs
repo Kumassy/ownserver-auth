@@ -74,6 +74,7 @@ pub enum TokenResponse {
     TokenResponseOk {
         version: u16,
         token: String,
+        host: String,
     },
     TokenResponseErr {
         version: u16,
