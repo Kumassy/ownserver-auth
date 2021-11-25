@@ -49,7 +49,7 @@ mod tests_client {
             warp::serve(routes).run(([127, 0, 0, 1], 11111)).await;
         });
 
-        let (token, host) = post_request_token("http://localhost:11111/request_token").await?;
+        let (token, host) = post_request_token("http://localhost:11111/v0/request_token").await?;
         let claim = decode_jwt(secret, &token)?;
         assert!(hosts.contains(&claim.host));
         Ok(())
@@ -68,7 +68,7 @@ mod tests_client {
             warp::serve(routes).run(([127, 0, 0, 1], 11112)).await;
         });
 
-        let result = post_request_token("http://localhost:11112/this_is_invalid_path").await;
+        let result = post_request_token("http://localhost:11112/v0/this_is_invalid_path").await;
         assert!(result.is_err());
 
         let error = result.err().unwrap();
@@ -78,17 +78,17 @@ mod tests_client {
 
     #[tokio::test]
     async fn client_returns_error_when_token_server_internal_error() -> Result<(), Box<dyn std::error::Error>> {
-        let routes = warp::post().and(warp::path("request_token")).map(|| {
+        let routes = warp::post().and(warp::path!("v0" / "request_token")).map(|| {
             let response = TokenResponse::TokenResponseErr {
-                    message: "failed to generate token".into()
-                };
-                warp::reply::with_status(warp::reply::json(&response), StatusCode::INTERNAL_SERVER_ERROR)
+                message: "failed to generate token".into()
+            };
+            warp::reply::with_status(warp::reply::json(&response), StatusCode::INTERNAL_SERVER_ERROR)
         });
         tokio::spawn(async move {
             warp::serve(routes).run(([127, 0, 0, 1], 11114)).await;
         });
 
-        let result = post_request_token("http://localhost:11114/request_token").await;
+        let result = post_request_token("http://localhost:11114/v0/request_token").await;
         assert!(result.is_err());
 
         let error = result.err().unwrap();

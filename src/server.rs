@@ -46,7 +46,10 @@ pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Ext
         }
     });
 
-    health_check.or(request_token).with(warp::trace::request())
+    let v0 = warp::path("v0");
+    let v0_request_token = v0.and(request_token);
+
+    health_check.or(v0_request_token).with(warp::trace::request())
 }
 
 
@@ -83,7 +86,7 @@ mod tests_routes {
             "baz.local".to_string()
         ];
 
-        let req = warp::test::request().method("POST").path("/request_token");
+        let req = warp::test::request().method("POST").path("/v0/request_token");
         let resp = req.reply(&build_routes(secret, hosts.clone())).await;
         assert_eq!(resp.status(), StatusCode::OK);
         
@@ -104,7 +107,7 @@ mod tests_routes {
         let hosts = vec![
         ];
 
-        let req = warp::test::request().method("POST").path("/request_token");
+        let req = warp::test::request().method("POST").path("/v0/request_token");
         let resp = req.reply(&build_routes(secret, hosts.clone())).await;
         assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
         
