@@ -17,7 +17,7 @@ tags:
   - name: "Health Check"
     description: Endpoint for health check
 paths:
-  /request_token:
+  /v0/request_token:
     post:
       summary:
         Issue token to access proxy server. It contains proxy server's FQDN, jwt to access to the server.
@@ -29,9 +29,9 @@ paths:
           schema:
             type: object
             properties:
-              version:
-                type: integer
-                example: 1
+              host:
+                type: string
+                example: foobar.local
               token:
                 type: string
                 example: TOKEN_IN_JWT_FORMAT
@@ -40,9 +40,6 @@ paths:
           schema:
             type: object
             properties:
-              version:
-                type: integer
-                example: 1
               message:
                 type: string
                 example: "failed to generate token"
@@ -51,9 +48,6 @@ paths:
           schema:
             type: object
             properties:
-              version:
-                type: integer
-                example: 1
               message:
                 type: string
                 example: "failed to allocate host"
