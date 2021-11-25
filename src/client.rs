@@ -1,12 +1,10 @@
 use thiserror::Error;
-use crate::{TokenResponse, TOKEN_SERVER_API_VERSION};
+use crate::TokenResponse;
 
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Failed to connect to token server or failed to parse message from token server: {0}.")]
     ConnectionError(#[from] reqwest::Error),
-    #[error("Client does not support token server version: {0}.")]
-    VersionMismatch(u16),
     #[error("Token server error: {0}.")]
     TokenServerError(String),
 }
@@ -21,13 +19,10 @@ pub async fn post_request_token(url: &str) -> Result<(String, String), Error> {
 
 
     match resp {
-        TokenResponse::TokenResponseOk {version, token, host} if version == TOKEN_SERVER_API_VERSION => {
+        TokenResponse::TokenResponseOk { token, host } => {
             Ok((token, host))
         },
-        TokenResponse::TokenResponseOk {version, ..} => {
-            Err(Error::VersionMismatch(version))
-        },
-        TokenResponse::TokenResponseErr { message, .. } => {
+        TokenResponse::TokenResponseErr { message } => {
             Err(Error::TokenServerError(message))
         }
     }
@@ -82,38 +77,9 @@ mod tests_client {
     }
 
     #[tokio::test]
-    async fn client_returns_error_when_token_server_version_mismatch() -> Result<(), Box<dyn std::error::Error>> {
-        let routes = warp::post().and(warp::path("request_token")).map(|| {
-            let response = TokenResponse::TokenResponseOk {
-                version: TOKEN_SERVER_API_VERSION + 100,
-                token: "foobartoken".to_string(),
-                host: "foohost.local".to_string()
-            };
-            warp::reply::with_status(warp::reply::json(&response), StatusCode::OK)
-        });
-        tokio::spawn(async move {
-            warp::serve(routes).run(([127, 0, 0, 1], 11113)).await;
-        });
-
-        let result = post_request_token("http://localhost:11113/request_token").await;
-        assert!(result.is_err());
-
-        let error = result.err().unwrap();
-        assert!(matches!(error, Error::VersionMismatch(_)));
-
-        if let Error::VersionMismatch(version) = error {
-            assert_eq!(version, TOKEN_SERVER_API_VERSION + 100);
-        } else {
-            panic!("unexpected error variant");
-        }
-        Ok(())
-    }
-
-    #[tokio::test]
     async fn client_returns_error_when_token_server_internal_error() -> Result<(), Box<dyn std::error::Error>> {
         let routes = warp::post().and(warp::path("request_token")).map(|| {
             let response = TokenResponse::TokenResponseErr {
-                    version: 0,
                     message: "failed to generate token".into()
                 };
                 warp::reply::with_status(warp::reply::json(&response), StatusCode::INTERNAL_SERVER_ERROR)

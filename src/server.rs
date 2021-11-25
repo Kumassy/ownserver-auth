@@ -3,7 +3,7 @@ use chrono::Duration;
 use warp::{
     Filter, http::StatusCode,
 };
-use crate::{make_jwt, Scheduler, TokenResponse, TOKEN_SERVER_API_VERSION};
+use crate::{make_jwt, Scheduler, TokenResponse};
 
 pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let scheduler = Arc::new(Mutex::new(Scheduler::new(hosts)));
@@ -22,7 +22,6 @@ pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Ext
         }) {
             Some(Ok((token, host))) => {
                 let response = TokenResponse::TokenResponseOk {
-                    version: TOKEN_SERVER_API_VERSION,
                     token,
                     host,
                 };
@@ -33,7 +32,6 @@ pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Ext
                 // this would not happen in production
                 tracing::error!("failed to generate token {:?}", e);
                 let response = TokenResponse::TokenResponseErr {
-                    version: TOKEN_SERVER_API_VERSION,
                     message: "failed to generate token".into()
                 };
                 warp::reply::with_status(warp::reply::json(&response), StatusCode::INTERNAL_SERVER_ERROR)
@@ -41,7 +39,6 @@ pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Ext
             None => {
                 tracing::error!("failed to allocate host");
                 let response = TokenResponse::TokenResponseErr {
-                    version: TOKEN_SERVER_API_VERSION,
                     message: "failed to allocate host".into()
                 };
                 warp::reply::with_status(warp::reply::json(&response), StatusCode::SERVICE_UNAVAILABLE)
@@ -91,8 +88,7 @@ mod tests_routes {
         assert_eq!(resp.status(), StatusCode::OK);
         
         let response: TokenResponse = serde_json::from_slice(resp.body())?;
-        if let TokenResponse::TokenResponseOk {version, token, host} = response {
-            assert_eq!(version, 0);
+        if let TokenResponse::TokenResponseOk { token, host } = response {
             let claim = decode_jwt("test", &token)?;
             assert!(hosts.contains(&claim.host));
             assert_eq!(claim.host, host);
@@ -117,8 +113,7 @@ mod tests_routes {
 
 
         let response: TokenResponse = serde_json::from_slice(resp.body())?;
-        if let TokenResponse::TokenResponseErr {version, message } = response {
-            assert_eq!(version, 0);
+        if let TokenResponse::TokenResponseErr { message } = response {
             assert_eq!(message, "failed to allocate host".to_string());
         } else {
             panic!("token response must be err");
