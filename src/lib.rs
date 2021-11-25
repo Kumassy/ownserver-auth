@@ -10,8 +10,6 @@ mod server;
 pub use server::build_routes;
 pub use client::{post_request_token, Error};
 
-pub(crate) const TOKEN_SERVER_API_VERSION: u16 = 0;
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub host: String,
@@ -72,12 +70,10 @@ impl Scheduler {
 #[serde(untagged)]
 pub enum TokenResponse {
     TokenResponseOk {
-        version: u16,
         token: String,
         host: String,
     },
     TokenResponseErr {
-        version: u16,
         message: String,
     }
 }
