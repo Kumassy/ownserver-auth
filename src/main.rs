@@ -22,6 +22,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     let routes = build_routes(secret, hosts);
-    warp::serve(routes).run(([127, 0, 0, 1], 8123)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], 8123)).await;
     Ok(())
 }
