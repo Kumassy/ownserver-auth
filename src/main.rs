@@ -1,27 +1,33 @@
-use chrono::Duration;
-use magic_tunnel_auth::{make_jwt, decode_jwt, build_routes};
+use magic_tunnel_auth::build_routes;
+use structopt::StructOpt;
+use tracing::{warn, debug};
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "basic")]
+struct Opt {
+    #[structopt(long, default_value = "8123")]
+    port: u16,
+
+    #[structopt(long, env = "MT_TOKEN_SECRET")]
+    token_secret: String,
+
+    #[structopt(short, long)]
+    hosts: Vec<String>,
+}
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
+    let opt = Opt::from_args();
+    debug!("{:?}", opt);
 
-    let secret = "supersecret";
-    let token = make_jwt(
-        secret,
-        Duration::minutes(10),
-        "hoge-id".to_string(),
-    );
-    println!("token: {:?}", token);
-    println!("decoded: {:?}", decode_jwt(secret, &token?));
+    if opt.hosts.is_empty() {
+        warn!("No available host");
+    }
 
-    let hosts = vec![
-        // "foo.local".to_string(),
-        // "bar.local".to_string(),
-        // "baz.local".to_string()
-        "foohost.local".to_string(),
-    ];
-
-    let routes = build_routes(secret, hosts);
-    warp::serve(routes).run(([0, 0, 0, 0], 8123)).await;
+    let Opt { token_secret, hosts, port } = opt;
+    let routes = build_routes(token_secret, hosts);
+    warp::serve(routes).run(([0, 0, 0, 0], port)).await;
     Ok(())
 }
