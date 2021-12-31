@@ -38,26 +38,26 @@ mod tests_client {
 
     #[tokio::test]
     async fn client_parse_ok_response() -> Result<(), Box<dyn std::error::Error>> {
-        let secret = "test";
+        let secret = "test".to_string();
         let hosts = vec![
             "foo.local".to_string(),
             "bar.local".to_string(),
             "baz.local".to_string()
         ];
-        let routes = build_routes(secret, hosts.clone());
+        let routes = build_routes(secret.clone(), hosts.clone());
         tokio::spawn(async move {
             warp::serve(routes).run(([127, 0, 0, 1], 11111)).await;
         });
 
         let (token, host) = post_request_token("http://localhost:11111/v0/request_token").await?;
-        let claim = decode_jwt(secret, &token)?;
+        let claim = decode_jwt(&secret, &token)?;
         assert!(hosts.contains(&claim.host));
         Ok(())
     }
 
     #[tokio::test]
     async fn client_returns_error_when_token_server_connection_error() -> Result<(), Box<dyn std::error::Error>> {
-        let secret = "test";
+        let secret = "test".to_string();
         let hosts = vec![
             "foo.local".to_string(),
             "bar.local".to_string(),

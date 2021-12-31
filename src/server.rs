@@ -5,7 +5,7 @@ use warp::{
 };
 use crate::{make_jwt, Scheduler, TokenResponse};
 
-pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn build_routes(secret: String, hosts: Vec<String>) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let scheduler = Arc::new(Mutex::new(Scheduler::new(hosts)));
 
     let health_check = warp::get().and(warp::path("health_check")).map(|| {
@@ -17,7 +17,7 @@ pub fn build_routes(secret: &'static str, hosts: Vec<String>) -> impl Filter<Ext
         let mut scheduler = scheduler.lock().unwrap();
 
         match scheduler.allocate_host().map(|host| {
-            make_jwt(secret, Duration::minutes(10), host.to_string())
+            make_jwt(&secret, Duration::minutes(10), host.to_string())
                 .map(|token| (token, host.to_string()))
         }) {
             Some(Ok((token, host))) => {
@@ -61,7 +61,7 @@ mod tests_routes {
 
     #[tokio::test]
     async fn test_health_check() -> Result<(), Box<dyn std::error::Error>> {
-        let secret = "test";
+        let secret = "test".to_string();
         let hosts = vec![
             "foo.local".to_string(),
             "bar.local".to_string(),
@@ -79,7 +79,7 @@ mod tests_routes {
 
     #[tokio::test]
     async fn test_request_token() -> Result<(), Box<dyn std::error::Error>> {
-        let secret = "test";
+        let secret = "test".to_string();
         let hosts = vec![
             "foo.local".to_string(),
             "bar.local".to_string(),
@@ -103,7 +103,7 @@ mod tests_routes {
 
     #[tokio::test]
     async fn test_fail_to_create_request_token_when_hosts_unavailable() -> Result<(), Box<dyn std::error::Error>> {
-        let secret = "test";
+        let secret = "test".to_string();
         let hosts = vec![
         ];
 
