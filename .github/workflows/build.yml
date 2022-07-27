@@ -24,8 +24,8 @@ jobs:
     - name: Build binary
       run: docker run --rm -u root -v `pwd`:/home/rust/src ekidd/rust-musl-builder cargo build --release
 
-    - name: save artifacts -- magic-tunnel-auth
+    - name: save artifacts -- ownserver-auth
       uses: actions/upload-artifact@v2
       with:
-        name: magic-tunnel-auth
-        path: ./target/x86_64-unknown-linux-musl/release/magic-tunnel-auth
+        name: ownserver-auth
+        path: ./target/x86_64-unknown-linux-musl/release/ownserver-auth

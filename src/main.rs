@@ -1,9 +1,9 @@
-use magic_tunnel_auth::build_routes;
+use ownserver_auth::build_routes;
 use structopt::StructOpt;
 use tracing::{warn, debug};
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "basic")]
+#[structopt(name = "ownserver")]
 struct Opt {
     #[structopt(long, default_value = "8123")]
     port: u16,

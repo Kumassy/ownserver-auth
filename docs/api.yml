@@ -2,7 +2,7 @@ swagger: "2.0"
 
 info:
   version: 0.0.1
-  title: Magic Tunnel Auth
+  title: Ownserver Auth
   description: |
     - implement user auth logic
     - allocate proxy server based on their load, payload type, user info...

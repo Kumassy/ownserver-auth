@@ -536,24 +536,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "magic-tunnel-auth"
-version = "0.1.3"
-dependencies = [
- "chrono",
- "jsonwebtoken",
- "rand 0.8.4",
- "reqwest",
- "serde",
- "serde_json",
- "structopt",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "warp",
-]
-
-[[package]]
 name = "matchers"
 version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -797,6 +779,24 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "ownserver-auth"
+version = "0.2.0"
+dependencies = [
+ "chrono",
+ "jsonwebtoken",
+ "rand 0.8.4",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "structopt",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "warp",
 ]
 
 [[package]]

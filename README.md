@@ -1,13 +1,3 @@
-# magic-tunnel-auth
-- watch loads of each host
-- assign hosts
-- generate token
+# ownserver-auth
+provides user auth and load balancing functions for ownserver
 
-
-
-
-## TODO
-- [ ] expose web api
-- [ ] pick hosts at random
-- [ ] watch health of each hosts
-- [ ] assign hosts
